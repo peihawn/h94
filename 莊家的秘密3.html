@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主力的秘密 V3.0 (上帝視角版)</title>
+<style>
+    :root {
+        --bg: #0d1117;
+        --card: #161b22;
+        --text: #c9d1d9;
+        --green: #2ea043;
+        --red: #da3633;
+        --accent: #58a6ff;
+        --border: #30363d;
+    }
+    body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        user-select: none;
+    }
+    h1 { margin-bottom: 10px; color: var(--accent); text-align: center;}
+    
+    .status-bar {
+        background: var(--card);
+        padding: 15px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 800px;
+        display: flex;
+        justify-content: space-between;
+        border: 1px solid var(--border);
+        margin-bottom: 20px;
+        font-size: 1.1em;
+        font-weight: bold;
+    }
+    .money { color: #e3b341; }
+    
+    .game-area {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        width: 100%;
+        max-width: 1200px;
+    }
+
+    .stock-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        cursor: pointer;
+        transition: 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+    .stock-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--accent);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .stock-card.selected {
+        border: 2px solid #e3b341; /* 選中時變金色 */
+        background: #1f242e;
+    }
+
+    /* 上帝視角標籤 */
+    .god-label {
+        position: absolute;
+        top: 0;
+        right: 0;
+        padding: 4px 8px;
+        font-size: 12px;
+        font-weight: bold;
+        border-bottom-left-radius: 8px;
+        color: white;
+    }
+    .outcome-up { background: var(--green); }
+    .outcome-down { background: var(--red); }
+    
+    canvas {
+        width: 100%;
+        height: 100px;
+        background: #0d1117;
+        border-radius: 4px;
+        display: block;
+        margin-top: 10px;
+    }
+
+    .info-box {
+        font-size: 1.1em;
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: var(--text);
+    }
+
+    .retail-bets {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid var(--border);
+        font-size: 0.9em;
+        color: #8b949e;
+        line-height: 1.5;
+        background: rgba(0,0,0,0.2);
+        padding: 8px;
+        border-radius: 4px;
+    }
+
+    .bet-hidden { filter: blur(4px); opacity: 0.7; }
+    .bet-revealed { filter: none; opacity: 1; color: #fff; border: 1px solid #58a6ff; }
+    
+    .controls {
+        margin-top: 25px;
+        text-align: center;
+        width: 100%;
+        max-width: 600px;
+    }
+    
+    button {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-size: 1.1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        width: 100%;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+    }
+    button:active { transform: translateY(2px); box-shadow: none; }
+    button:disabled { background: #30363d; color: #8b949e; cursor: not-allowed; box-shadow: none; }
+    
+    .skill-btn { background: #8957e5; }
+    .confirm-btn { background: #da3633; } 
+
+    /* 彈窗樣式 */
+    .modal {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.9);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        z-index: 999;
+    }
+    .modal-content {
+        background: var(--card);
+        padding: 30px;
+        border-radius: 12px;
+        text-align: center;
+        border: 1px solid var(--border);
+        width: 80%;
+        max-width: 400px;
+    }
+    .win-text { color: var(--green); font-size: 2em; margin: 10px 0; font-weight: bold; }
+    .loss-text { color: var(--red); font-size: 2em; margin: 10px 0; font-weight: bold; }
+
+</style>
+</head>
+<body>
+
+<h1>👁️ 主力的秘密 V3.0 (上帝視角)</h1>
+
+<div class="status-bar">
+    <div>第 <span id="round">1</span>/5 輪</div>
+    <div>資金: <span id="balance" class="money">$10,000,000</span></div>
+</div>
+
+<div class="controls">
+    <button class="skill-btn" id="btnPeek" onclick="game.useSkill()">🔍 技能：偷看 3 家散戶底牌 (剩餘 1 次)</button>
+    <div style="color: #8b949e; font-size: 0.9em; margin-bottom: 10px;">
+        右上角標籤已顯示該劇本結局。<br>選擇一張圖表，讓市場走向符合你的利益。
+    </div>
+</div>
+
+<div class="game-area" id="market"></div>
+
+<div class="controls">
+    <button class="confirm-btn" id="btnConfirm" onclick="game.confirmMarket()" disabled>決定收網 (請先選圖)</button>
+</div>
+
+<div class="modal" id="resultModal">
+    <div class="modal-content">
+        <h2 id="resultTitle">本輪結算</h2>
+        <p id="resultDesc" style="line-height: 1.6; color: #c9d1d9;"></p>
+        <p>莊家損益: <span id="resultPnL"></span></p>
+        <button onclick="game.nextRound()" style="margin-top:15px; background:#2ea043;">下一輪</button>
+    </div>
+</div>
+
+<script>
+const game = {
+    balance: 10000000,
+    round: 1,
+    maxRounds: 5,
+    skillUsed: false,
+    selectedIndex: -1,
+    stocks: [],
+
+    init: function() {
+        try {
+            document.getElementById('market').innerHTML = '';
+            this.stocks = [];
+            this.selectedIndex = -1;
+            this.skillUsed = false;
+
+            document.getElementById('btnPeek').disabled = false;
+            document.getElementById('btnPeek').innerText = "🔍 技能：偷看 3 家散戶底牌";
+            document.getElementById('btnConfirm').disabled = true;
+            document.getElementById('btnConfirm').innerText = "決定收網 (請先選圖)";
+            document.getElementById('btnConfirm').style.opacity = "0.5";
+
+            for(let i=0; i<8; i++) {
+                let stock = this.generateStock(i);
+                this.stocks.push(stock);
+                this.createCard(stock, i);
+            }
+        } catch (e) {
+            alert("錯誤：" + e);
+        }
+    },
+
+    generateStock: function(index) {
+        let prices = [100];
+        for(let d=0; d<90; d++) {
+            let change = (Math.random() - 0.5) * 4; 
+            prices.push(prices[prices.length-1] * (1 + change/100));
+        }
+        
+        let isBull = Math.random() > 0.5;
+        let finalChange = isBull ? (Math.random()*8 + 3) : -(Math.random()*8 + 3); // 讓漲跌幅明顯一點 3~11%
+        
+        // 散戶邏輯 (追高殺低)
+        let trend = prices[90] - prices[80];
+        // 如果趨勢大漲，散戶很容易無腦多
+        let bullProb = trend > 0 ? 0.8 : 0.2; 
+        let retailDir = Math.random() < bullProb ? 'LONG' : 'SHORT';
+        let amount = Math.floor(Math.random() * 50 + 10) * 10000;
+
+        return {
+            id: index,
+            name: String.fromCharCode(65+index) + " 股",
+            prices: prices,
+            finalChange: finalChange,
+            retail: { dir: retailDir, amt: amount }
+        };
+    },
+
+    createCard: function(stock, index) {
+        let div = document.createElement('div');
+        div.className = 'stock-card';
+        div.onclick = () => this.selectStock(index);
+        div.id = 'card-' + index;
+
+        // 上帝視角標籤
+        let outcomeClass = stock.finalChange > 0 ? 'outcome-up' : 'outcome-down';
+        let outcomeText = stock.finalChange > 0 ? `結局: 暴漲 +${stock.finalChange.toFixed(1)}%` : `結局: 崩盤 ${stock.finalChange.toFixed(1)}%`;
+        let label = `<div class="god-label ${outcomeClass}">${outcomeText}</div>`;
+
+        let canvas = document.createElement('canvas');
+        canvas.width = 200;
+        canvas.height = 100;
+        
+        let info = `<div class="info-box">${stock.name}</div>`;
+        
+        let retailHtml = `
+            <div class="retail-bets bet-hidden" id="retail-${index}">
+                散戶方向: ???<br>押注金額: ???
+            </div>`;
+
+        div.innerHTML = label + info + retailHtml;
+        div.appendChild(canvas);
+        document.getElementById('market').appendChild(div);
+        
+        // 必須等元素加入 DOM 後再畫圖
+        setTimeout(() => this.drawChart(canvas, stock.prices), 10);
+    },
+
+    drawChart: function(canvas, data) {
+        let ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        let w = canvas.width;
+        let h = canvas.height;
+        let max = Math.max(...data);
+        let min = Math.min(...data);
+        let range = max - min || 1; 
+
+        ctx.clearRect(0,0,w,h);
+        ctx.strokeStyle = '#58a6ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        for(let i=0; i<data.length; i++) {
+            let x = (i / (data.length-1)) * w;
+            let y = h - ((data[i] - min) / range) * (h - 20) - 10;
+            if (i===0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+    },
+
+    selectStock: function(index) {
+        this.selectedIndex = index;
+        document.querySelectorAll('.stock-card').forEach(el => el.classList.remove('selected'));
+        document.getElementById('card-' + index).classList.add('selected');
+        
+        let s = this.stocks[index];
+        let move = s.finalChange > 0 ? "暴漲" : "崩盤";
+        
+        let btn = document.getElementById('btnConfirm');
+        btn.disabled = false;
+        btn.innerText = `執行 [${s.name}] 的劇本 (結局: ${move})`;
+        btn.style.opacity = "1";
+    },
+
+    useSkill: function() {
+        if(this.skillUsed) return;
+        this.skillUsed = true;
+        document.getElementById('btnPeek').disabled = true;
+        document.getElementById('btnPeek').innerText = "技能已冷卻";
+
+        // 隨機開 3 個
+        let idxs = [0,1,2,3,4,5,6,7].sort(() => Math.random()-0.5).slice(0,3);
+        idxs.forEach(i => {
+            let el = document.getElementById('retail-' + i);
+            let s = this.stocks[i];
+            let dirText = s.retail.dir === 'LONG' ? 
+                '<span style="color:#ff6b6b; font-weight:bold;">做多 (看漲)</span>' : 
+                '<span style="color:#58a6ff; font-weight:bold;">做空 (看跌)</span>';
+            
+            el.innerHTML = `散戶方向: ${dirText}<br>押注金額: $${(s.retail.amt/10000).toFixed(0)}萬`;
+            el.className = 'retail-bets bet-revealed';
+        });
+    },
+
+    confirmMarket: function() {
+        if(this.selectedIndex === -1) return;
+        
+        let scenario = this.stocks[this.selectedIndex];
+        let marketDir = scenario.finalChange > 0 ? 'LONG' : 'SHORT';
+        let roundPnL = 0;
+        let victims = 0;
+
+        this.stocks.forEach(s => {
+            // 散戶贏 = 散戶方向 跟 市場方向 一樣
+            let win = (s.retail.dir === marketDir);
+            
+            if(win) {
+                roundPnL -= s.retail.amt; // 莊家賠
+            } else {
+                roundPnL += s.retail.amt; // 莊家賺
+                victims++;
+            }
+        });
+
+        this.balance += roundPnL;
+        document.getElementById('balance').innerText = "$" + this.balance.toLocaleString();
+
+        let modal = document.getElementById('resultModal');
+        let title = document.getElementById('resultTitle');
+        let desc = document.getElementById('resultDesc');
+        let pnl = document.getElementById('resultPnL');
+
+        modal.style.display = 'flex';
+        
+        let move = scenario.finalChange > 0 ? "暴漲噴出" : "崩盤下殺";
+        desc.innerHTML = `
+            劇本執行完畢：<b>${scenario.name}</b><br>
+            市場結局：${move} <span style="color:${scenario.finalChange>0?'var(--green)':'var(--red)'}">(${scenario.finalChange.toFixed(2)}%)</span><br>
+            這波共有 <b>${victims}/8</b> 個散戶方向錯誤`;
+
+        if(roundPnL >= 0) {
+            title.innerText = "💰 莊家收割成功";
+            title.className = "win-text";
+            pnl.innerText = "+$" + roundPnL.toLocaleString();
+            pnl.className = "win-text";
+        } else {
+            title.innerText = "💸 莊家慘賠";
+            title.className = "loss-text";
+            pnl.innerText = "-$" + Math.abs(roundPnL).toLocaleString();
+            pnl.className = "loss-text";
+        }
+    },
+
+    nextRound: function() {
+        document.getElementById('resultModal').style.display = 'none';
+        this.round++;
+        if(this.round > this.maxRounds) {
+            alert("遊戲結束！最終資金: $" + this.balance.toLocaleString());
+            location.reload();
+        } else {
+            document.getElementById('round').innerText = this.round;
+            this.init();
+        }
+    }
+};
+
+window.onload = function() { game.init(); };
+</script>
+
+</body>
+</html>
