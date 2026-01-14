@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>網格戰情室 V5.1 (修復版)</title>
+<style>
+    :root {
+        --bg: #0b0e11;
+        --card: #181a20;
+        --input-bg: #2b3139;
+        --text-main: #eaecef;
+        --text-sub: #848e9c;
+        --accent: #fcd535;
+        --green: #0ecb81;
+        --red: #f6465d;
+        --blue: #4a90e2;
+        --border: #2b3139;
+    }
+
+    body {
+        background-color: var(--bg);
+        color: var(--text-main);
+        font-family: 'Microsoft JhengHei', Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        min-height: 100vh;
+    }
+
+    .container {
+        width: 100%;
+        max-width: 500px;
+        background-color: var(--card);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        border: 1px solid #262930;
+    }
+
+    h1 {
+        font-size: 22px;
+        margin-bottom: 24px;
+        color: var(--text-main);
+        border-left: 4px solid var(--accent);
+        padding-left: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .badge {
+        background: rgba(252, 213, 53, 0.2);
+        color: var(--accent);
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        letter-spacing: 0.5px;
+    }
+
+    .section-title {
+        font-size: 13px;
+        color: var(--text-sub);
+        margin-top: 24px;
+        margin-bottom: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .input-row { display: flex; gap: 12px; margin-bottom: 16px; }
+    .input-group { flex: 1; position: relative; }
+
+    label {
+        display: block;
+        font-size: 12px;
+        color: var(--text-sub);
+        margin-bottom: 8px;
+    }
+
+    input, select {
+        width: 100%;
+        background-color: var(--input-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        color: var(--text-main);
+        font-size: 15px;
+        box-sizing: border-box;
+        outline: none;
+        transition: 0.2s;
+    }
+
+    input:focus, select:focus {
+        border-color: var(--accent);
+        background-color: #353a42;
+    }
+
+    /* 動態資金條樣式 */
+    .capital-split-bar {
+        display: flex;
+        height: 16px;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        background: #333;
+        font-size: 10px;
+        font-weight: bold;
+    }
+    .split-hold { 
+        background: var(--blue); 
+        width: 50%; 
+        display: flex; align-items: center; justify-content: center; 
+        color: white; transition: width 0.3s;
+    }
+    .split-active { 
+        background: var(--accent); 
+        width: 50%; 
+        display: flex; align-items: center; justify-content: center; 
+        color: black; transition: width 0.3s;
+    }
+    
+    .split-legend {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--text-sub);
+    }
+    .legend-item span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+
+    .combined-input { display: flex; gap: 8px; }
+    .combined-input input { flex: 2; }
+    .combined-input select { flex: 1.5; }
+
+    .card-info {
+        background-color: #202429;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 10px;
+        border: 1px solid var(--border);
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+    .info-val { font-weight: bold; font-family: monospace; }
+
+    .result-box {
+        margin-top: 30px;
+        border-top: 1px dashed var(--border);
+        padding-top: 25px;
+    }
+
+    .profit-header {
+        font-size: 12px;
+        color: var(--text-sub);
+        text-align: center;
+        margin-bottom: 5px;
+    }
+
+    .big-profit {
+        font-size: 36px;
+        color: var(--green);
+        font-weight: 800;
+        text-align: center;
+        margin: 5px 0 15px 0;
+    }
+
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-item { background: #202429; padding: 12px; border-radius: 8px; text-align: center; }
+    .stat-label { font-size: 11px; color: var(--text-sub); margin-bottom: 4px; }
+    .stat-val { font-size: 16px; font-weight: bold; color: var(--text-main); }
+
+    .warning {
+        background: rgba(246, 70, 93, 0.1);
+        color: var(--red);
+        font-size: 12px;
+        padding: 10px;
+        border-radius: 6px;
+        margin-top: 10px;
+        display: none;
+        border: 1px solid rgba(246, 70, 93, 0.3);
+    }
+    
+    .note { font-size: 10px; color: var(--text-sub); margin-top: 5px; }
+
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>
+        網格戰情室 <span style="color:var(--text-sub); font-size:0.6em">V5.1</span>
+        <span class="badge">修復版</span>
+    </h1>
+
+    <div class="section-title">STEP 1: 資金與動態倉位</div>
+    <div class="input-group">
+        <label>總投入本金 (Total Investment)</label>
+        <input type="number" id="investment" value="1000">
+        
+        <div class="capital-split-bar">
+            <div class="split-hold" id="barHold">50%</div>
+            <div class="split-active" id="barActive">50%</div>
+        </div>
+        <div class="split-legend">
+            <div class="legend-item"><span style="background:var(--blue)"></span>需持有幣 (底艙): <b id="holdAmt">500</b> U</div>
+            <div class="legend-item"><span style="background:var(--accent)"></span>需持有 U (跑單): <b id="activeAmt">500</b> U</div>
+        </div>
+    </div>
+    
+    <div style="height: 15px;"></div>
+
+    <div class="input-row">
+        <div class="input-group">
+            <label>區間下限 (Low)</label>
+            <input type="number" id="rangeLow" value="90000">
+        </div>
+        <div class="input-group">
+            <label>目前幣價 (Current)</label>
+            <input type="number" id="currentPrice" value="92000" style="color:var(--accent); font-weight:bold;">
+        </div>
+        <div class="input-group">
+            <label>區間上限 (High)</label>
+            <input type="number" id="rangeHigh" value="100000">
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label>真實波動 ATR 與 時間級別</label>
+        <div class="combined-input">
+            <input type="number" id="atr" value="200" placeholder="ATR">
+            <select id="timeframe">
+                <option value="1">1 分 K (x1440)</option>
+                <option value="5" selected>5 分 K (x288)</option>
+                <option value="15">15 分 K (x96)</option>
+                <option value="60">1 小時 K (x24)</option>
+                <option value="1440">日線 (x1)</option>
+                <option value="custom">自定義倍數</option>
+            </select>
+        </div>
+        <div class="note" id="atrNote">設定：5分K ATR，系統自動乘上 288 倍。</div>
+        <div id="customFreqBox" style="display:none; margin-top:8px;">
+            <input type="number" id="customFreq" placeholder="倍數" value="1">
+        </div>
+    </div>
+
+    <div class="section-title">STEP 2: 網格參數</div>
+    <div class="input-row">
+        <div class="input-group">
+            <label>網格格數 (Grids)</label>
+            <input type="number" id="gridCount" value="20">
+        </div>
+        <div class="input-group">
+            <label>手續費 (%)</label>
+            <input type="number" id="feeRate" value="0.01" step="0.01">
+        </div>
+    </div>
+
+    <div class="card-info">
+        <div class="info-row">
+            <span style="color:var(--text-sub)">每格價差</span>
+            <span class="info-val" id="priceSpread" style="color:var(--accent)">0.00</span>
+        </div>
+        <div class="info-row">
+            <span style="color:var(--text-sub)">單格利潤率 (不含費)</span>
+            <span class="info-val" id="gridProfitRate">0.00%</span>
+        </div>
+        <div class="info-row">
+            <span style="color:var(--text-sub)">單格實際價值 (本金/格)</span>
+            <span class="info-val" id="realAmountPerGrid">0.00 U</span>
+        </div>
+        <div class="warning" id="profitWarning">⚠️ 警告：利潤過低，恐被手續費吃光！</div>
+    </div>
+
+    <div class="result-box">
+        <div class="profit-header">預估單日現金流 (Daily Cashflow)</div>
+        <div class="big-profit" id="dailyCashflow">0.00 U</div>
+
+        <div class="stat-grid">
+            <div class="stat-item">
+                <div class="stat-label">預估成交次數</div>
+                <div class="stat-val" id="estTrades" style="color:var(--accent)">0 次</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">扣除總手續費</div>
+                <div class="stat-val" id="totalFees" style="color:var(--red)">0.00 U</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">單日總資產 ROI</div>
+                <div class="stat-val" id="dailyRoi" style="color:var(--green)">0.00%</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">年化 APR</div>
+                <div class="stat-val" id="apr" style="color:var(--green)">0.00%</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // 獲取 DOM 元素
+    const timeframeSelect = document.getElementById('timeframe');
+    const noteEl = document.getElementById('atrNote');
+    const customBox = document.getElementById('customFreqBox');
+    
+    // 綁定輸入框事件，確保留即時更新
+    const inputs = document.querySelectorAll('input, select');
+    inputs.forEach(el => {
+        el.addEventListener('input', calculate);
+        el.addEventListener('change', calculate);
+    });
+
+    timeframeSelect.addEventListener('change', function() {
+        const val = this.value;
+        const text = this.options[this.selectedIndex].text;
+        if (val === 'custom') {
+            customBox.style.display = 'block';
+            noteEl.innerText = "設定：自定義模式";
+        } else {
+            customBox.style.display = 'none';
+            const multiplier = Math.floor(1440 / parseInt(val));
+            noteEl.innerText = `設定：當前使用 ${text} ATR，系統自動乘上 ${multiplier} 倍推算全日。`;
+        }
+        calculate();
+    });
+
+    function calculate() {
+        try {
+            // 1. 獲取數值 (防止 NaN)
+            const totalInvestment = parseFloat(document.getElementById('investment').value) || 0;
+            const price = parseFloat(document.getElementById('currentPrice').value) || 0;
+            const low = parseFloat(document.getElementById('rangeLow').value) || 0;
+            const high = parseFloat(document.getElementById('rangeHigh').value) || 0;
+            const atr = parseFloat(document.getElementById('atr').value) || 0;
+            const grids = parseInt(document.getElementById('gridCount').value) || 0;
+            const fee = parseFloat(document.getElementById('feeRate').value) || 0;
+
+            if (high <= low || grids === 0 || price === 0) return;
+
+            // 2. 核心：動態倉位計算 (物理邏輯修復)
+            // 區間總長度
+            const range = high - low;
+            
+            // 上方空間 (需要掛賣單 -> 需要幣)
+            const upperZone = Math.max(0, high - price);
+            
+            // 下方空間 (需要掛買單 -> 需要 U)
+            const lowerZone = Math.max(0, price - low);
+            
+            // 計算比例 (限制在 0~1 之間)
+            let coinRatio = upperZone / range;
+            let usdtRatio = lowerZone / range;
+            
+            // 校正比例 (防止價格超出區間時比例異常)
+            if (price >= high) { coinRatio = 0; usdtRatio = 1; } // 破頂，滿手U準備接
+            if (price <= low) { coinRatio = 1; usdtRatio = 0; }  // 破底，滿手幣等漲 (或是準備止損，這裡假設是滿倉)
+
+            // 顯示文字與寬度
+            const coinPercent = (coinRatio * 100).toFixed(1) + "%";
+            const usdtPercent = (usdtRatio * 100).toFixed(1) + "%";
+
+            document.getElementById('barHold').style.width = coinPercent;
+            document.getElementById('barHold').innerText = "幣 " + coinPercent;
+            
+            document.getElementById('barActive').style.width = usdtPercent;
+            document.getElementById('barActive').innerText = "U " + usdtPercent;
+
+            // 計算金額
+            const holdAmt = totalInvestment * coinRatio;
+            const activeAmt = totalInvestment * usdtRatio;
+            
+            document.getElementById('holdAmt').innerText = holdAmt.toFixed(0);
+            document.getElementById('activeAmt').innerText = activeAmt.toFixed(0);
+
+            // 3. 網格利潤計算
+            const spread = range / grids;
+            const rawProfitRate = (spread / price) * 100;
+            const netRate = rawProfitRate - (fee * 2);
+
+            // 4. 頻率計算
+            let dailyMultiplier = 1;
+            if (timeframeSelect.value === 'custom') {
+                dailyMultiplier = parseFloat(document.getElementById('customFreq').value) || 1;
+            } else {
+                dailyMultiplier = 1440 / parseInt(timeframeSelect.value);
+            }
+
+            let tradesPerPeriod = 0;
+            if (spread > 0) {
+                tradesPerPeriod = atr / spread;
+            }
+            const totalTrades = Math.floor(tradesPerPeriod * dailyMultiplier);
+
+            // 5. 金流計算
+            // 單格本金 (假設均分總資金，最標準的網格模型)
+            const amountPerGrid = totalInvestment / grids;
+            
+            // 單次交易利潤
+            const profitPerTrade = amountPerGrid * (netRate / 100);
+            
+            // 總計
+            const totalDailyProfit = profitPerTrade * totalTrades;
+            const totalFees = (amountPerGrid * (fee/100) * 2) * totalTrades;
+            
+            // ROI
+            const roi = (totalInvestment > 0) ? (totalDailyProfit / totalInvestment) * 100 : 0;
+
+            // 6. 更新 UI (確保這些 ID 都存在)
+            document.getElementById('priceSpread').innerText = spread.toFixed(2);
+            document.getElementById('gridProfitRate').innerText = rawProfitRate.toFixed(2) + "%";
+            document.getElementById('realAmountPerGrid').innerText = amountPerGrid.toFixed(2) + " U";
+            
+            const warningEl = document.getElementById('profitWarning');
+            if (netRate <= 0.02) warningEl.style.display = 'block';
+            else warningEl.style.display = 'none';
+
+            document.getElementById('estTrades').innerText = totalTrades.toLocaleString() + " 次";
+            document.getElementById('totalFees').innerText = "-" + totalFees.toFixed(2) + " U";
+            
+            const cfEl = document.getElementById('dailyCashflow');
+            cfEl.innerText = totalDailyProfit.toFixed(2) + " U";
+            cfEl.style.color = totalDailyProfit > 0 ? 'var(--green)' : 'var(--red)';
+
+            document.getElementById('dailyRoi').innerText = roi.toFixed(2) + "%";
+            document.getElementById('apr').innerText = (roi * 365).toFixed(0) + "%";
+
+        } catch (e) {
+            console.error("計算發生錯誤:", e);
+        }
+    }
+
+    // 初始化執行
+    calculate();
+</script>
+
+</body>
+</html>
