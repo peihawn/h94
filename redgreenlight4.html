@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>紅綠燈挑戰 V2</title>
+    <style>
+        body { 
+            margin: 0; overflow: hidden; background: #222; 
+            font-family: 'Arial', sans-serif; 
+            display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; 
+            height: 100vh; color: white; user-select: none; -webkit-user-select: none;
+        }
+        #gameCanvas { 
+            background: #333; border: 4px solid #fff; border-radius: 10px; 
+            max-width: 95%; height: auto;
+        }
+        #status { font-size: 28px; margin-bottom: 10px; font-weight: bold; height: 40px; text-shadow: 2px 2px 4px #000;}
+        #runBtn {
+            margin-top: 20px; width: 200px; height: 80px; font-size: 24px;
+            background-color: #00BFFF; color: white; border: none;
+            border-radius: 50px; box-shadow: 0 6px #009ACD; cursor: pointer;
+            touch-action: manipulation; font-weight: bold; transition: transform 0.1s;
+        }
+        #runBtn:active { transform: scale(0.95); box-shadow: 0 2px #007799; }
+        .instructions { font-size: 14px; color: #aaa; margin-top: 10px;}
+    </style>
+</head>
+<body>
+
+    <div id="status">準備開始...</div>
+    <canvas id="gameCanvas" width="600" height="300"></canvas>
+    <button id="runBtn">衝刺 (按我)</button>
+    <div class="instructions">電腦按空白鍵 / 手機按按鈕</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const statusText = document.getElementById('status');
+    const runBtn = document.getElementById('runBtn');
+
+    // ==========================================
+    // 老師教學區：參數設定
+    // ==========================================
+    
+    let greenTime = 3000;  // 綠燈亮多久
+    let yellowTime = 1500; // 黃燈警告多久 (新增!)
+    let redTime = 2500;    // 紅燈停多久
+    let stepSize = 4;     // 按一下的目標距離 (加大步伐)
+    
+    // ==========================================
+
+    // 遊戲狀態變數
+    let playerX = 30;       // 目前畫面上顯示的位置
+    let targetX = 30;       // 玩家想要去的位置 (用於動畫緩衝)
+    let lightState = "RED"; // 燈號狀態: GREEN, YELLOW, RED
+    let lastSwitchTime = 0;
+    let finishLine = 500;
+    let gameState = "WAITING"; // WAITING, PLAYING, WON, GAME_OVER
+
+    function draw() {
+        // 清除畫面
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 畫終點線
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(finishLine, 0); ctx.lineTo(finishLine, canvas.height); ctx.stroke();
+
+        // 畫紅綠燈 (位置置中)
+        let lightColor = '#333';
+        if (lightState === "GREEN") lightColor = '#00FF00';
+        else if (lightState === "YELLOW") lightColor = '#FFFF00'; // 黃燈
+        else if (lightState === "RED") lightColor = '#FF0000';
+
+        ctx.fillStyle = lightColor;
+        ctx.beginPath(); ctx.arc(canvas.width / 2, 50, 30, 0, Math.PI * 2); ctx.fill();
+        
+        // 加上燈的光暈效果
+        ctx.shadowBlur = 20; ctx.shadowColor = lightColor; ctx.fill(); ctx.shadowBlur = 0;
+
+        // 畫玩家 (簡單的補間動畫邏輯)
+        // 讓現在的位置 (playerX) 慢慢追上 目標位置 (targetX)
+        // 0.1 是滑動係數，越小越滑，越大越快
+        if (gameState === "PLAYING" || gameState === "WON") {
+            playerX += (targetX - playerX) * 0.1;
+        }
+        
+        // 繪製藍色方塊
+        ctx.fillStyle = '#00BFFF';
+        ctx.fillRect(playerX, 150, 40, 40);
+        
+        // 畫眼睛 (讓他看起來像在看前面)
+        ctx.fillStyle = 'white';
+        ctx.fillRect(playerX + 25, 155, 10, 10);
+        
+        // 如果還有距離，繼續重繪
+        requestAnimationFrame(draw);
+    }
+
+    function gameLogic(timestamp) {
+        if (gameState !== "PLAYING") {
+            if (gameState === "WAITING" || gameState === "GAME_OVER" || gameState === "WON") {
+                // 即使遊戲結束，還是要畫圖才能看到結果
+                requestAnimationFrame(() => gameLogic(performance.now())); 
+                return;
+            }
+        }
+
+        // --- 燈號切換邏輯 ---
+        let timeSinceSwitch = timestamp - lastSwitchTime;
+        
+        if (lightState === "GREEN" && timeSinceSwitch > greenTime) {
+            lightState = "YELLOW"; // 綠 -> 黃
+            lastSwitchTime = timestamp;
+            updateStatus();
+        } else if (lightState === "YELLOW" && timeSinceSwitch > yellowTime) {
+            lightState = "RED";   // 黃 -> 紅
+            lastSwitchTime = timestamp;
+            updateStatus();
+        } else if (lightState === "RED" && timeSinceSwitch > redTime) {
+            lightState = "GREEN"; // 紅 -> 綠
+            lastSwitchTime = timestamp;
+            updateStatus();
+        }
+
+        // --- 輸贏判斷 ---
+        // 勝利判定
+        if (playerX >= finishLine - 10 && gameState === "PLAYING") {
+            gameState = "WON";
+            statusText.innerText = "🏆 勝利！太神啦！";
+            statusText.style.color = "gold";
+        }
+
+        // 失敗判定：如果是紅燈，且玩家還在顯著移動 (targetX 和 playerX 差距過大)
+        // 或者是玩家手賤在紅燈時按了按鈕 (targetX 增加)
+        if (lightState === "RED" && gameState === "PLAYING") {
+            // 這裡我們嚴格一點：只要紅燈時，目標位置還在增加，就算輸
+            // 注意：因為有滑動動畫，playerX 會一直動，所以我們判斷「是否有新的輸入」比較準
+            // 但為了簡單，我們只要紅燈時按下按鈕就算輸
+        }
+
+        requestAnimationFrame(gameLogic);
+    }
+
+    function updateStatus() {
+        if (lightState === "GREEN") {
+            statusText.innerText = "🟢 綠燈 (快衝!)";
+            statusText.style.color = "#00FF00";
+            runBtn.style.backgroundColor = "#00BFFF";
+        } else if (lightState === "YELLOW") {
+            statusText.innerText = "⚠️ 黃燈 (小心!)"; // 倒數警告
+            statusText.style.color = "#FFFF00";
+            runBtn.style.backgroundColor = "#FFD700";
+        } else {
+            statusText.innerText = "🔴 紅燈 (停!!!)";
+            statusText.style.color = "#FF0000";
+            runBtn.style.backgroundColor = "#FF4444";
+        }
+    }
+
+    function handleAction() {
+        if (gameState === "WAITING" || gameState === "GAME_OVER" || gameState === "WON") {
+            // 重置遊戲
+            playerX = 30;
+            targetX = 30;
+            gameState = "PLAYING";
+            lightState = "GREEN";
+            lastSwitchTime = performance.now();
+            updateStatus();
+            return;
+        }
+
+        if (gameState === "PLAYING") {
+            // 紅燈時按下 -> 爆炸
+            if (lightState === "RED") {
+                gameState = "GAME_OVER";
+                statusText.innerText = "💥 爆炸！紅燈不能動！";
+                statusText.style.color = "orange";
+            } else {
+                // 綠燈或黃燈 -> 增加目標距離
+                targetX += stepSize;
+            }
+        }
+    }
+
+    // 輸入監聽
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') handleAction();
+    });
+    runBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault(); handleAction();
+    });
+    runBtn.addEventListener('click', (e) => {
+        handleAction(); // 電腦滑鼠測試用
+    });
+
+    // 啟動
+    draw();
+    requestAnimationFrame(gameLogic);
+    updateStatus();
+
+</script>
+</body>
+</html>
